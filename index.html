@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Across Ministers - Room Reservation</title>
+  <style>
+    /* 🌈 Global Styles */
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      margin: 20px;
+      text-align: center;
+      font-size: 2rem;
+      text-shadow: 2px 2px 6px rgba(0,0,0,0.4);
+    }
+
+    .container {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 20px;
+      margin: 20px;
+      width: 90%;
+      max-width: 1000px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    }
+
+    button {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 8px;
+      background: #ff7eb3;
+      color: white;
+      cursor: pointer;
+      transition: 0.3s;
+      margin: 5px;
+    }
+
+    button:hover {
+      background: #ff5277;
+    }
+
+    input, select, textarea {
+      padding: 10px;
+      width: 100%;
+      margin: 5px 0 15px;
+      border-radius: 8px;
+      border: none;
+    }
+
+    .hidden { display: none; }
+
+    /* Calendar */
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 5px;
+    }
+    .calendar div {
+      padding: 15px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: center;
+    }
+    .calendar div:hover {
+      background: #ff7eb3;
+    }
+
+    /* Slideshow */
+    .slideshow {
+      position: relative;
+      max-width: 100%;
+      height: 250px;
+      overflow: hidden;
+      border-radius: 15px;
+      margin-bottom: 15px;
+    }
+    .slide {
+      display: none;
+      width: 100%;
+      height: 100%;
+    }
+    .slide img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 15px;
+    }
+
+    /* Bookings */
+    .booking-card {
+      background: rgba(0,0,0,0.3);
+      margin: 10px 0;
+      padding: 15px;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Across Ministers - Room Reservation System</h1>
+
+  <div class="container" id="loginSection">
+    <h2>Login</h2>
+    <select id="roleSelect">
+      <option value="user">User</option>
+      <option value="admin">Admin</option>
+    </select>
+    <button onclick="login()">Login</button>
+  </div>
+
+  <div class="container hidden" id="roomSection">
+    <h2>Room Gallery</h2>
+    <div class="slideshow" id="slideshow"></div>
+    <input type="file" id="roomImage" accept="image/*" class="hidden">
+    <button id="uploadBtn" class="hidden" onclick="uploadRoomImage()">Upload Room Image</button>
+  </div>
+
+  <div class="container hidden" id="calendarSection">
+    <h2>Calendar - Select a Date</h2>
+    <div class="calendar" id="calendar"></div>
+  </div>
+
+  <div class="container hidden" id="bookingSection">
+    <h2>Book a Room</h2>
+    <form id="bookingForm">
+      <input type="text" id="title" placeholder="Booking Title" required>
+      <textarea id="description" placeholder="Description"></textarea>
+      <input type="date" id="date" required>
+      <input type="time" id="time" required>
+      <select id="roomSelect"></select>
+      <button type="submit">Confirm Booking</button>
+    </form>
+  </div>
+
+  <div class="container hidden" id="bookingsList">
+    <h2>All Bookings</h2>
+    <div id="bookingCards"></div>
+  </div>
+
+  <script>
+    let role = "";
+    let rooms = JSON.parse(localStorage.getItem("rooms")) || [];
+    let bookings = JSON.parse(localStorage.getItem("bookings")) || [];
+    let currentSlide = 0;
+
+    function login() {
+      role = document.getElementById("roleSelect").value;
+      document.getElementById("loginSection").classList.add("hidden");
+      document.getElementById("roomSection").classList.remove("hidden");
+      document.getElementById("calendarSection").classList.remove("hidden");
+      document.getElementById("bookingSection").classList.remove("hidden");
+      document.getElementById("bookingsList").classList.remove("hidden");
+      if (role === "admin") {
+        document.getElementById("roomImage").classList.remove("hidden");
+        document.getElementById("uploadBtn").classList.remove("hidden");
+      }
+      renderRooms();
+      renderBookings();
+      generateCalendar();
+    }
+
+    function uploadRoomImage() {
+      const file = document.getElementById("roomImage").files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          rooms.push(e.target.result);
+          localStorage.setItem("rooms", JSON.stringify(rooms));
+          renderRooms();
+        }
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function renderRooms() {
+      const slideshow = document.getElementById("slideshow");
+      const roomSelect = document.getElementById("roomSelect");
+      slideshow.innerHTML = "";
+      roomSelect.innerHTML = "";
+      rooms.forEach((room, i) => {
+        const div = document.createElement("div");
+        div.classList.add("slide");
+        div.innerHTML = `<img src="${room}" alt="Room ${i+1}">`;
+        slideshow.appendChild(div);
+        const option = document.createElement("option");
+        option.value = "Room " + (i+1);
+        option.textContent = "Room " + (i+1);
+        roomSelect.appendChild(option);
+      });
+      showSlides();
+    }
+
+    function showSlides() {
+      const slides = document.getElementsByClassName("slide");
+      for (let i = 0; i < slides.length; i++) slides[i].style.display = "none";
+      currentSlide++;
+      if (currentSlide > slides.length) currentSlide = 1;
+      if (slides[currentSlide-1]) slides[currentSlide-1].style.display = "block";
+      setTimeout(showSlides, 3000);
+    }
+
+    function generateCalendar() {
+      const calendar = document.getElementById("calendar");
+      calendar.innerHTML = "";
+      const today = new Date();
+      for (let i=0; i<30; i++) {
+        const date = new Date();
+        date.setDate(today.getDate()+i);
+        const div = document.createElement("div");
+        div.textContent = date.toDateString();
+        div.onclick = () => {
+          document.getElementById("date").value = date.toISOString().split("T")[0];
+        };
+        calendar.appendChild(div);
+      }
+    }
+
+    document.getElementById("bookingForm").addEventListener("submit", function(e){
+      e.preventDefault();
+      const booking = {
+        title: document.getElementById("title").value,
+        description: document.getElementById("description").value,
+        date: document.getElementById("date").value,
+        time: document.getElementById("time").value,
+        room: document.getElementById("roomSelect").value
+      };
+      bookings.push(booking);
+      localStorage.setItem("bookings", JSON.stringify(bookings));
+      renderBookings();
+      alert("Booking Confirmed!");
+      this.reset();
+    });
+
+    function renderBookings() {
+      const list = document.getElementById("bookingCards");
+      list.innerHTML = "";
+      bookings.forEach((b,i)=>{
+        const div = document.createElement("div");
+        div.classList.add("booking-card");
+        div.innerHTML = `<h3>${b.title}</h3>
+          <p>${b.description}</p>
+          <p><b>${b.date}</b> at <b>${b.time}</b></p>
+          <p>Room: ${b.room}</p>`;
+        list.appendChild(div);
+      });
+    }
+  </script>
+</body>
+</html>
